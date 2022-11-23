@@ -1,0 +1,25 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "Working on revision $CODEBUILD_RESOLVED_SOURCE_VERSION"
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+  build:
+    commands:
+      - echo "Building the Docker image..."
+      - docker build -t $CODEBUILD_RESOLVED_SOURCE_VERSION .    
+      - docker tag $CODEBUILD_RESOLVED_SOURCE_VERSION $ECR_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker tag $CODEBUILD_RESOLVED_SOURCE_VERSION $ECR_URL:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo "Pushing the Docker image..."
+      - docker push $ECR_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_URL:$IMAGE_TAG
+      - printf '[{"name":"%s","imageUri":"%s"}]' web $ECR_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION > deploy.json
+artifacts:
+  files:
+    - deploy.json
